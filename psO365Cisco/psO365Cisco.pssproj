@@ -27,14 +27,8 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
-    <Content Include="BK7Config.txt" />
-    <Content Include="BTPConfig.txt" />
-  </ItemGroup>
-  <ItemGroup>
-    <Compile Include="ManualScript.ps1" />
     <Compile Include="psO365Cisco.psd1" />
     <Compile Include="psO365Cisco.psm1" />
-    <Compile Include="SSHScript.ps1" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <Target Name="Build" />
