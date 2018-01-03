@@ -71,6 +71,96 @@ function Compare-O365SubnetsToCiscoCommands {
 	}
 }
 
+<#
+.SYNOPSIS
+  Gets current running config from Cisco device via SSH.
+.DESCRIPTION
+
+.PARAMETER ComputerName
+  Cisco device to connect to.
+.PARAMETER Credential
+  Login credential to use. To work this credential should take you into enable mode automatically.
+#>
+function Get-CiscoRunningConfig {
+	[CmdletBinding()]
+	param(
+		[Parameter(Mandatory=$true)]
+		[string]$ComputerName,
+		[Parameter(Mandatory=$true)]
+		[PSCredential]$Credential
+	)
+
+	PROCESS {
+		$SSHSession = New-SSHSession -ComputerName $ComputerName -Credential $Credential -AcceptKey;
+		$SSHShell = New-SSHShellStream -SSHSession $SSHSession -TerminalName xterm -Columns 1000 -Rows 1000 -Width 1000 -Height 1000 -BufferSize 1000;
+
+		# Read initial session data looking for enable prompt
+		$Output = Read-CiscoStream -SSHShell $SSHShell -Prompt "#";
+
+		# Get full prompt
+		$Prompt = $Output[-1];
+
+		$SSHShell.WriteLine("show running-config");
+		$Output = Read-CiscoStream -SSHShell $SSHShell -Prompt $Prompt;
+
+		# Remove command echo and prompt
+		$Output  | Where-Object { $_ -ne "show running-config" -and $_ -ne $Prompt };
+
+		Remove-SSHSession -SSHSession $SSHSession | Out-Null
+	}
+}
+
+<#
+.SYNOPSIS
+  Reads data from SSH stream until either expected prompt is found or max timeout is reached.
+.DESCRIPTION
+
+.PARAMETER SSHShell
+  SSH Shell Stream to read from.
+.PARAMETER Prompt
+  Expected string that should be the last data read to stop looking for more.
+.PARAMETER MaxWait
+  Max number of seconds to wait for prompt.
+#>
+function Read-CiscoStream {
+	[CmdletBinding()]
+	param(
+		[Parameter(Mandatory=$true)]
+		[Renci.SshNet.ShellStream]$SSHShell,
+		[string]$Prompt,
+		[int]$MaxWait = 20
+	)
+
+	PROCESS {
+		$Output = "";
+		$StopWatch = [system.diagnostics.stopwatch]::StartNew();
+		while ($true) {
+			if ($SSHShell.DataAvailable) { $Output += $SSHShell.Read(); }
+			if ($StopWatch.Elapsed.Seconds -gt $MaxWait) {
+				# Max timeout reached
+				Write-Verbose "Read-CiscoStream stopped due to max timeout reached!";
+				break;
+			}
+			Start-Sleep -Milliseconds 100
+			if (-not $SSHShell.DataAvailable) {
+				if ($Prompt) {
+					if ($Output.EndsWith($Prompt)) {
+						# No more pending data and last bit of data was expected prompt
+						break;
+					}
+				} else {
+					# No more data and not looking for specific prompt
+					break;
+				}
+			}
+		}
+
+		$StopWatch.Stop();
+
+		$Output -split "[\r\n]" |? {$_};
+	}
+}
+
 function ConvertTo-DottedDecimalIP {
   <#
     .Synopsis
