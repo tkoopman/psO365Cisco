@@ -99,6 +99,8 @@ function Get-CiscoRunningConfig {
 
 		# Get full prompt
 		$Prompt = $Output[-1];
+		
+		$SSHShell.WriteLine("term len 0");
 
 		$SSHShell.WriteLine("show running-config");
 		$Output = Read-CiscoStream -SSHShell $SSHShell -Prompt $Prompt;
