@@ -25,15 +25,28 @@ function Compare-O365SubnetsToCiscoCommands {
 		[string[]]$CurrentConfig
 	)
 	BEGIN {
+		# path where client ID will be stored
+		$datapath = $Env:TEMP + "\MS_O365_ClientRequestId.txt";
+		Write-Verbose "Client ID File: $datapath";
+
+		# fetch client ID if data file exists; otherwise create new file
+		if (Test-Path $datapath) {
+			$content = Get-Content $datapath;
+			$clientRequestId = $content;
+		}
+		else {
+			Write-Verbose "Creating new Client ID";
+			$clientRequestId = [GUID]::NewGuid().Guid;
+			$clientRequestId | Out-File $datapath;
+		}
+
+		Write-Verbose "Client ID: $clientRequestId";
+
 		# Download Microsoft Cloud IP Ranges and Names into Object
-		$O365IPAddresses = "https://support.content.office.net/en-us/static/O365IPAddresses.xml";
-		[XML]$O365 = Invoke-WebRequest -Uri $O365IPAddresses -DisableKeepAlive;
+		$O365IPAddresses = Invoke-RestMethod https://endpoints.office.com/endpoints/O365Worldwide?ClientRequestId=$clientRequestId;
 
 		# Extract ALL IPv4 unique subnets
-		$O365IPs =  $O365.products.product.addresslist |
-						Where-Object { ($_.type -eq "IPv4") } |
-						Select-Object -ExpandProperty address -ErrorAction SilentlyContinue |
-						Sort-Object -Unique;
+		$O365IPs = $O365IPAddresses | Select-Object -ExpandProperty ips -ErrorAction SilentlyContinue | where {$_ -match "\."} | Sort-Object -Unique
 
 		# Generate what the config should look like
 		$O365Config = foreach($IP in $O365IPs) {
