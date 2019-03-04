@@ -43,7 +43,7 @@ function Compare-O365SubnetsToCiscoCommands {
 		Write-Verbose "Client ID: $clientRequestId";
 
 		# Download Microsoft Cloud IP Ranges and Names into Object
-		$O365IPAddresses = Invoke-RestMethod https://endpoints.office.com/endpoints/O365Worldwide?ClientRequestId=$clientRequestId;
+		$O365IPAddresses = Invoke-RestMethod https://endpoints.office.com/endpoints/Worldwide?ClientRequestId=$clientRequestId;
 
 		# Extract ALL IPv4 unique subnets
 		$O365IPs = $O365IPAddresses | Select-Object -ExpandProperty ips -ErrorAction SilentlyContinue | where {$_ -match "\."} | Sort-Object -Unique
